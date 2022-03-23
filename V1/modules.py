@@ -91,13 +91,10 @@ class Four_Pos_Fusion_Embedding(nn.Module):
         max_seq_len = pos_s.size(1)
         # rel_distance = self.seq_len_to_rel_distance(max_seq_len)
 
-        # rel_distance_flat = rel_distance.view(-1)
-        # rel_pos_embedding_flat = self.pe[rel_distance_flat+self.max_seq_len]
-        # rel_pos_embedding = rel_pos_embedding_flat.view(size=[max_seq_len,max_seq_len,self.hidden_size])
-        print('96 modules', pos_ss.shape)
-        print(self.max_seq_len)
-        print((pos_ss).view(-1).shape)
-        print((pos_ss).view(-1) + self.max_seq_len)
+        # print('96 modules', pos_ss.shape)
+        # print(self.max_seq_len)
+        # print((pos_ss).view(-1).shape)
+        # print((pos_ss).view(-1) + self.max_seq_len)
         '''
         view(-1)拉平成1维的
         + self.max_seq_len 是因为pos_ss中有正有负，算上[CLS]和[SEP]，
@@ -107,7 +104,7 @@ class Four_Pos_Fusion_Embedding(nn.Module):
         pe_se = self.pe_se[(pos_se).view(-1) + self.max_seq_len].view(size=[batch, max_seq_len, max_seq_len, -1])
         pe_es = self.pe_es[(pos_es).view(-1) + self.max_seq_len].view(size=[batch, max_seq_len, max_seq_len, -1])
         pe_ee = self.pe_ee[(pos_ee).view(-1) + self.max_seq_len].view(size=[batch, max_seq_len, max_seq_len, -1])
-        print('101 modules', pe_ss.shape)
+        # print('101 modules', pe_ss.shape)
 
         if self.four_pos_fusion == 'ff':
             pe_4 = torch.cat([pe_ss,pe_se,pe_es,pe_ee],dim=-1)
@@ -216,32 +213,24 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
     def forward(self, key, query, value, seq_len, lex_num, pos_s, pos_e, rel_pos_embedding):
         batch = key.size(0)
         #这里的seq_len已经是之前的seq_len+lex_num了
-        print('210 modules', query.shape)
-        print('211 modules', rel_pos_embedding.shape)
+        # print('210 modules', query.shape)
+        # print('211 modules', rel_pos_embedding.shape)
         if self.k_proj:
-            if self.mode['debug']:
-                print_info('k_proj!')
             key = self.w_k(key)
         if self.q_proj:
-            if self.mode['debug']:
-                print_info('q_proj!')
             query = self.w_q(query)
         if self.v_proj:
-            if self.mode['debug']:
-                print_info('v_proj!')
             value = self.w_v(value)
         if self.r_proj:
-            if self.mode['debug']:
-                print_info('r_proj!')
             rel_pos_embedding = self.w_r(rel_pos_embedding)
-        print('228 modules', query.shape)
-        print('229 modules', rel_pos_embedding.shape)
+        # print('228 modules', query.shape)
+        # print('229 modules', rel_pos_embedding.shape)
 
         batch = key.size(0)
         max_seq_len = key.size(1)
 
         # batch * seq_len * n_head * d_head
-        print('235 modules', batch, max_seq_len, self.num_heads, self.per_head_size)
+        # print('235 modules', batch, max_seq_len, self.num_heads, self.per_head_size)
         key = torch.reshape(key, [batch, max_seq_len, self.num_heads, self.per_head_size])
         query = torch.reshape(query, [batch, max_seq_len, self.num_heads, self.per_head_size])
         value = torch.reshape(value, [batch, max_seq_len, self.num_heads, self.per_head_size])
@@ -258,19 +247,19 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
 
         # batch * n_head * d_head * key_len
         key = key.transpose(-1, -2)
-        print('252 modules', key.shape)
+        # print('252 modules', key.shape)
         # #A
         # A_ = torch.matmul(query,key)
         # #C
         # # key: batch * n_head * d_head * key_len
-        print('257 modules', self.u.shape)
+        # print('257 modules', self.u.shape)
         # 8*20 -> 1*8*1*20
         u_for_c = self.u.unsqueeze(0).unsqueeze(-2)
-        print('259 modules', u_for_c.shape)
+        # print('259 modules', u_for_c.shape)
         # u_for_c: 1(batch broadcast) * num_heads * 1 *per_head_size
         # key_for_c = key
         # C_ = torch.matmul(u_for_c, key)
-        print('264 modules', query.shape)
+        # print('264 modules', query.shape)
         query_and_u_for_c = query + u_for_c
         if self.mode['debug']:
             print('query:{}'.format(query.size()))
@@ -278,16 +267,16 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
             print('query_and_u_for_c:{}'.format(query_and_u_for_c.size()))
             print('key:{}'.format(key.size()))
         A_C = torch.matmul(query_and_u_for_c, key)
-        print('272 modules', A_C.shape)
+        # print('272 modules', A_C.shape)
 
         if self.mode['debug']:
             print('query size:{}'.format(query.size()))
             print('query_and_u_for_c size:{}'.format(query_and_u_for_c.size()))
 
         #B
-        print('279 modules', rel_pos_embedding.shape)
+        # print('279 modules', rel_pos_embedding.shape)
         rel_pos_embedding_for_b = rel_pos_embedding.permute(0, 3, 1, 4, 2)
-        print('281 modules', rel_pos_embedding_for_b.shape)
+        # print('281 modules', rel_pos_embedding_for_b.shape)
         # after above, rel_pos_embedding: batch * num_head * query_len * per_head_size * key_len
         query_for_b = query.view([batch, self.num_heads, max_seq_len, 1, self.per_head_size])
         # after above, query_for_b: batch * num_head * query_len * 1 * per_head_size
@@ -315,15 +304,15 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
             # print_info('D:{}'.format(D_.size()))
         # batch_size * head_num * max_len * max_len
         attn_score_raw = A_C + B_D
-        print('308 modules', attn_score_raw.shape)
+        # print('308 modules', attn_score_raw.shape)
 
         if self.scaled:
             attn_score_raw  = attn_score_raw / math.sqrt(self.per_head_size)
 
-        print('323', seq_len, lex_num)
+        # print('323 modules', seq_len, lex_num)
         mask = seq_len_to_mask(seq_len+lex_num).bool().unsqueeze(1).unsqueeze(1)
         attn_score_raw_masked = attn_score_raw.masked_fill(~mask, -1e15)
-        print('325 modules', attn_score_raw_masked.shape)
+        # print('325 modules', attn_score_raw_masked.shape)
         if self.mode['debug']:
             print('attn_score_raw_masked:{}'.format(attn_score_raw_masked))
             print('seq_len:{}'.format(seq_len))

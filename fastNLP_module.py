@@ -16,7 +16,7 @@ from fastNLP.embeddings.contextual_embedding import ContextualEmbedding
 from fastNLP.embeddings.bert_embedding import _BertWordModel
 # from fastNLP.modules import BertModel
 from fastNLP.io.file_utils import PRETRAINED_BERT_MODEL_DIR
-
+from V1.bart_embedding import _BartWordModel
 class StaticEmbedding(TokenEmbedding):
     """
     StaticEmbedding组件. 给定预训练embedding的名称或路径，根据vocab从embedding中抽取相应的数据(只会将出现在vocab中的词抽取出来，
@@ -325,7 +325,7 @@ class BertEmbedding(ContextualEmbedding):
 
     def __init__(self, vocab: Vocabulary, model_dir_or_name: str = 'en-base-uncased', layers: str = '-1',
                  pool_method: str = 'first', word_dropout=0, dropout=0, include_cls_sep: bool = False,
-                 pooled_cls=True, requires_grad: bool = True, auto_truncate: bool = False):
+                 pooled_cls=True, requires_grad: bool = True, auto_truncate: bool = False, model_type='bert'):
         """
 
         :param ~fastNLP.Vocabulary vocab: 词表
@@ -364,9 +364,14 @@ class BertEmbedding(ContextualEmbedding):
         __init__时，构建vocab中所有word到tokenizer编号的映射
         forward时，把输入的words拉成一维的tokenizer编号，根据编号得到bert嵌入
         '''
-        self.model = _BertWordModel(model_dir_or_name=model_dir_or_name, vocab=vocab, layers=layers,
-                                    pool_method=pool_method, include_cls_sep=include_cls_sep,
-                                    pooled_cls=pooled_cls, auto_truncate=auto_truncate, min_freq=2)
+        if model_type.lower() == 'bert':
+            self.model = _BertWordModel(model_dir_or_name=model_dir_or_name, vocab=vocab, layers=layers,
+                                        pool_method=pool_method, include_cls_sep=include_cls_sep,
+                                        pooled_cls=pooled_cls, auto_truncate=auto_truncate, min_freq=2)
+        elif model_type.lower() == 'bart':
+            self.model = _BartWordModel(model_dir_or_name=model_dir_or_name, vocab=vocab, layers=layers,
+                                        pool_method=pool_method, include_cls_sep=include_cls_sep,
+                                        pooled_cls=pooled_cls, auto_truncate=auto_truncate, min_freq=2)
         # print('370 fastNLP_module', self.model.word_to_wordpieces)
         # print('370 fastNLP_module', self.model.word_pieces_lengths)
         self.requires_grad = requires_grad

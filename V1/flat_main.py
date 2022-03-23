@@ -103,6 +103,7 @@ parser.add_argument('--warmup',default=0.1,type=float)
 # hyper of model
 # parser.add_argument('--use_bert',type=int,default=1)
 parser.add_argument('--model',default='transformer',help='lstm|transformer')
+parser.add_argument('--model_type',default='bert',help='bert|bart')
 parser.add_argument('--lattice',default=1,type=int)
 parser.add_argument('--use_bigram', default=1,type=int)
 parser.add_argument('--hidden', default=-1,type=int)
@@ -430,8 +431,12 @@ fitlog.add_hyper(args)
 if args.model == 'transformer':
     if args.lattice:
         if args.use_bert:
-            bert_embedding = BertEmbedding(vocabs['lattice'],model_dir_or_name='/data1/nzw/model/cn-wwm',requires_grad=False,
-                                           word_dropout=0.01)
+            if args.model_type=='bert':
+                model_dir = '/data1/nzw/model/cn-wwm'
+            elif args.model_type=='bart':
+                model_dir = '/data1/nzw/model/bart-base-chinese'
+            bert_embedding = BertEmbedding(vocabs['lattice'],model_dir_or_name=model_dir,requires_grad=False,
+                                           word_dropout=0.01,model_type=args.model_type)
         else:
             bert_embedding = None
         if args.only_bert:
