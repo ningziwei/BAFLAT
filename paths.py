@@ -7,9 +7,9 @@ lk_word_path_2 = '/data1/nzw/Pretrain/sgns.merge.word'
 
 
 
-ontonote4ner_cn_path = '/data1/nzw/CNER/OntoNote4NER'
-msra_ner_cn_path = '/data1/nzw/CNER/MSRANER'
-resume_ner_path = '/data1/nzw/CNER/ResumeNER'
+ontonote4ner_cn_path = '/data1/nzw/CNER/ontonotes5_conll'
+msra_ner_cn_path = '/data1/nzw/CNER/msra_conll'
+resume_ner_path = '/data1/nzw/CNER/resume_conll'
 weibo_ner_path = '/data1/nzw/CNER/weibo'
 
 

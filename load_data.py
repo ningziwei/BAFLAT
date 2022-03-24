@@ -17,8 +17,8 @@ def load_ontonotes4ner(path,char_embedding_path=None,bigram_embedding_path=None,
     from utils import get_bigrams
 
     train_path = os.path.join(path,'train.char.bmes{}'.format('_clip' if train_clip else ''))
-    dev_path = os.path.join(path,'dev.char.bmes')
-    test_path = os.path.join(path,'test.char.bmes')
+    dev_path = os.path.join(path,'dev.dev')
+    test_path = os.path.join(path,'test.test')
 
     loader = ConllLoader(['chars','target'])
     train_bundle = loader.load(train_path)
@@ -87,9 +87,9 @@ def load_resume_ner(path,char_embedding_path=None,bigram_embedding_path=None,ind
     from fastNLP.io.loader import ConllLoader
     from utils import get_bigrams
 
-    train_path = os.path.join(path,'train.char.bmes')
-    dev_path = os.path.join(path,'dev.char.bmes')
-    test_path = os.path.join(path,'test.char.bmes')
+    train_path = os.path.join(path,'train.train')
+    dev_path = os.path.join(path,'dev.dev')
+    test_path = os.path.join(path,'test.test')
 
     loader = ConllLoader(['chars','target'])
     train_bundle = loader.load(train_path)
