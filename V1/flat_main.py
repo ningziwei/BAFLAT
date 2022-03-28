@@ -187,18 +187,14 @@ if args.debug:
     # args.dataset = 'toy'
     pass
 
-
 if args.device!='cpu':
     assert args.device.isdigit()
     device = torch.device('cuda:{}'.format(args.device))
 else:
     device = torch.device('cpu')
-
 refresh_data = False
-
-
-for k,v in args.__dict__.items():
-    print_info('{}:{}'.format(k,v))
+# for k,v in args.__dict__.items():
+#     print_info('{}:{}'.format(k,v))
 
 raw_dataset_cache_name = os.path.join('cache',args.dataset+
                           '_trainClip:{}'.format(args.train_clip)
@@ -260,8 +256,6 @@ elif args.dataset == 'msra':
                                                            only_train_min_freq=args.only_train_min_freq
                                                            )
 
-
-
 if args.gaz_dropout < 0:
     args.gaz_dropout = args.embed_dropout
 
@@ -291,7 +285,7 @@ cache_name = os.path.join('cache',(args.dataset+'_lattice'+'_only_train:{}'+
                                   args.bigram_min_freq,args.word_min_freq,args.only_train_min_freq,
                                   args.number_normalized,args.lexicon_name,load_dataset_seed))
 
-for k in datasets['train'][0].items(): print(k)
+# for k in datasets['train'][0].items(): print(k)
 # 对实体抽取数据进行数据增强
 '''
     datasets { 'train': {chars, raw_chars, lexicons, lex_num, lex_s, lex_e, lattice},'dev':,'test':}
@@ -492,8 +486,7 @@ elif args.model =='lstm':
                           embed_dropout=args.embed_dropout,output_dropout=args.output_dropout,use_bigram=True,
                           debug=args.debug)
 
-# for n,p in model.named_parameters():
-#     print('476 {}:{}'.format(n,p.size()))
+# print('flat_main 495 model', model)
 
 with torch.no_grad():
     print_info('{}init pram{}'.format('*'*15,'*'*15))

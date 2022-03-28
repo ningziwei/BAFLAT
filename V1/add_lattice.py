@@ -144,7 +144,7 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
     for k,v in datasets.items():
         v.apply(concat, new_field_name='lattice')       # apply直接作用于每一个样本
         v.set_input('lattice')                          # 声明该field的数据是模型输入
-        v.apply(get_pos_s,new_field_name='pos_s')
+        v.apply(get_pos_s, new_field_name='pos_s')
         v.apply(get_pos_e, new_field_name='pos_e')
         v.set_input('pos_s','pos_e')
     # print('148 add_lattice', datasets['train'][0])

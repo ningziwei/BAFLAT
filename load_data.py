@@ -16,7 +16,7 @@ def load_ontonotes4ner(path,char_embedding_path=None,bigram_embedding_path=None,
     from fastNLP.io.loader import ConllLoader
     from utils import get_bigrams
 
-    train_path = os.path.join(path,'train.char.bmes{}'.format('_clip' if train_clip else ''))
+    train_path = os.path.join(path,'train.train')
     dev_path = os.path.join(path,'dev.dev')
     test_path = os.path.join(path,'test.test')
 
@@ -110,8 +110,6 @@ def load_resume_ner(path,char_embedding_path=None,bigram_embedding_path=None,ind
     datasets['train'].add_seq_len('chars')
     datasets['dev'].add_seq_len('chars')
     datasets['test'].add_seq_len('chars')
-
-
 
     char_vocab = Vocabulary()
     bigram_vocab = Vocabulary()
@@ -354,8 +352,6 @@ def load_msra_ner_1(path,char_embedding_path=None,bigram_embedding_path=None,ind
 
     datasets['train'].add_seq_len('chars')
     datasets['test'].add_seq_len('chars')
-
-
 
     char_vocab = Vocabulary()
     bigram_vocab = Vocabulary()

@@ -77,11 +77,6 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
         for w in lexicon_in_train:
             w_trie.insert(w)
 
-
-
-
-
-
     import copy
     for k,v in datasets.items():
         v.apply_field(partial(get_skip_path,w_trie=w_trie),'chars','lexicons')
@@ -184,13 +179,9 @@ def equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,w_list,word_embedd
     #                   'skips_r2l_word',new_field_name='skips_r2l_word')
 
 
-
-
-
     if word_embedding_path is not None:
         word_embedding = StaticEmbedding(word_vocab,word_embedding_path,word_dropout=0)
         embeddings['word'] = word_embedding
-
     if word_char_mix_embedding_path is not None:
         lattice_embedding = StaticEmbedding(lattice_vocab, word_char_mix_embedding_path,word_dropout=0.01,
                                             min_freq=lattice_min_freq,only_train_min_freq=only_train_min_freq)

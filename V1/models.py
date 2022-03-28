@@ -368,10 +368,14 @@ class Lattice_Transformer_SeqLabel(nn.Module):
 
         batch_size = lattice.size(0)
         max_seq_len_and_lex_num = lattice.size(1)
+        # bigram的长度就是原始序列的长度
         max_seq_len = bigrams.size(1)
 
-        # raw_embed 是字和词的pretrain的embedding，但是是分别trian的，所以需要区分对待
+        # self.lattice_embed(lattice) 用的是字和词混在一起的50维预训练向量
+        # Vocabulary从字符到序号，StaticEmbedding从序号到对应向量
         raw_embed = self.lattice_embed(lattice)
+        # print('models 377 lattice', raw_embed.shape)
+        # print('models 378 lattice', lattice)
         if self.use_bigram:
             bigrams_embed = self.bigram_embed(bigrams)
             bigrams_embed = torch.cat([bigrams_embed,
@@ -383,7 +387,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
         # print('raw_embed_char_1:{}'.format(raw_embed_char[:1,:3,-5:]))
 
         if self.use_bert:
-            bert_pad_length = lattice.size(1)-max_seq_len
+            bert_pad_length = max_seq_len_and_lex_num-max_seq_len
             char_for_bert = lattice[:, :max_seq_len]
             mask = seq_len_to_mask(seq_len).bool()
             char_for_bert = char_for_bert.masked_fill((~mask),self.vocabs['lattice'].padding_idx)
@@ -481,8 +485,6 @@ class BERT_SeqLabel(nn.Module):
 
     def forward(self, lattice, bigrams, seq_len, lex_num, pos_s, pos_e,
                 target, chars_target=None):
-        # batch_size = lattice.size(0)
-        # max_seq_len_and_lex_num = lattice.size(1)
         max_seq_len = bigrams.size(1)
 
         words = lattice[:,:max_seq_len]
