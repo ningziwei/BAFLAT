@@ -1,22 +1,24 @@
-from fastNLP.embeddings.embedding import TokenEmbedding
-from fastNLP.core import Vocabulary
-from fastNLP.io.file_utils import PRETRAIN_STATIC_FILES, _get_embedding_url, cached_path
 import os
 import warnings
-from collections import defaultdict
-from copy import deepcopy
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
+from copy import deepcopy
+from collections import defaultdict
 
 from fastNLP.core import logger
+from fastNLP.core import Vocabulary
+from fastNLP.io.file_utils import PRETRAIN_STATIC_FILES, _get_embedding_url, cached_path
 from fastNLP.io.file_utils import _get_file_name_base_on_postfix
-from utils import MyDropout
+from fastNLP.io.file_utils import PRETRAINED_BERT_MODEL_DIR
+from fastNLP.embeddings.embedding import TokenEmbedding
 from fastNLP.embeddings.contextual_embedding import ContextualEmbedding
 from fastNLP.embeddings.bert_embedding import _BertWordModel
 # from fastNLP.modules import BertModel
-from fastNLP.io.file_utils import PRETRAINED_BERT_MODEL_DIR
+
+from utils import MyDropout
 from V1.bart_embedding import _BartWordModel
+
 class StaticEmbedding(TokenEmbedding):
     """
     StaticEmbedding组件. 给定预训练embedding的名称或路径，根据vocab从embedding中抽取相应的数据(只会将出现在vocab中的词抽取出来，
@@ -301,7 +303,6 @@ class StaticEmbedding(TokenEmbedding):
         words = self.dropout(words)
         return words
 
-
 class BertEmbedding(ContextualEmbedding):
     """
     使用BERT对words进行编码的Embedding。建议将输入的words长度限制在430以内，而不要使用512(根据预训练模型参数，可能有变化)。这是由于
@@ -395,7 +396,7 @@ class BertEmbedding(ContextualEmbedding):
                 return self.dropout(outputs)
             else:
                 return outputs
-        # 生成words的bert编码
+        # 生成words的bert嵌入结果
         outputs = self.model(words)
         # print('fastNLP 389', outputs.size())
 
@@ -408,7 +409,6 @@ class BertEmbedding(ContextualEmbedding):
     def drop_word(self, words):
         """
         按照设定随机将words设置为unknown_index。
-
         :param torch.LongTensor words: batch_size x max_len
         :return:
         """
@@ -418,11 +418,6 @@ class BertEmbedding(ContextualEmbedding):
                     sep_mask = words.eq(self._word_sep_index)
 
                 mask = torch.full(words.size(), fill_value=self.word_dropout, dtype=torch.float)
-                # print(mask.device)
-                # print(mask)
-                # print(mask.device)
-                # exit()
-                # mask = mask.to(self.device_cpu)
                 mask = torch.bernoulli(mask).eq(1)  # dropout_word越大，越多位置为1
                 mask = mask.to(words.device)
                 pad_mask = words.ne(0)

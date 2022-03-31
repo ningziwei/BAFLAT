@@ -194,7 +194,7 @@ class Absolute_Position_Embedding(nn.Module):
         return emb
 
 class Lattice_Transformer_SeqLabel(nn.Module):
-    def __init__(self,lattice_embed, bigram_embed, hidden_size, label_size,
+    def __init__(self, lattice_embed, bigram_embed, hidden_size, label_size,
                  num_heads, num_layers,
                  use_abs_pos,use_rel_pos, learnable_position,add_position,
                  layer_preprocess_sequence, layer_postprocess_sequence,
@@ -438,6 +438,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
         if self.embed_dropout_pos == '2':
             embedding = self.embed_dropout(embedding)
         
+        # 相对位置编码的注意力层
         encoded = self.encoder(embedding,seq_len,lex_num=lex_num,pos_s=pos_s,pos_e=pos_e)
 
         if hasattr(self,'output_dropout'):
@@ -465,7 +466,6 @@ class Lattice_Transformer_SeqLabel(nn.Module):
             if self.self_supervised:
                 chars_pred = self.output_self_supervised(encoded)
                 result['chars_pred'] = chars_pred
-
             return result
 
 class BERT_SeqLabel(nn.Module):
@@ -505,7 +505,6 @@ class BERT_SeqLabel(nn.Module):
             pred, path = self.crf.viterbi_decode(pred, mask)
             result = {'pred': pred}
             return result
-
 
 class Transformer_SeqLabel(nn.Module):
     def __init__(self,char_embed, bigram_embed, hidden_size, label_size,
@@ -560,8 +559,6 @@ class Transformer_SeqLabel(nn.Module):
             self.pos_encode = Absolute_Position_Embedding(self.abs_pos_fusion_func,
                                                           self.hidden_size,learnable=self.learnable_position,mode=self.mode,
                                                           pos_norm=self.pos_norm)
-
-
         if self.use_rel_pos:
             pe = get_embedding(max_seq_len,hidden_size,rel_pos_init=self.rel_pos_init)
             pe_sum = pe.sum(dim=-1,keepdim=True)
@@ -679,12 +676,3 @@ class Transformer_SeqLabel(nn.Module):
                 result['chars_pred'] = chars_pred
 
             return result
-
-
-    # def train(self,mode=True):
-    #     print('model mode get train ! mode:{}'.format(mode))
-    #     super().train(mode)
-    #
-    # def eval(self):
-    #     print('model mode get eval !')
-    #     super().eval()

@@ -26,8 +26,8 @@ def get_embedding(max_seq_len, embedding_dim, padding_idx=None, rel_pos_init=0):
         emb = torch.arange(-max_seq_len,max_seq_len+1, dtype=torch.float).unsqueeze(1)*emb.unsqueeze(0)
     # num_embeddings*half_dim -> num_embeddings*embedding_dim
     emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1).view(num_embeddings, -1)
+    # embedding_dim是奇数时，要再补一维数据
     if embedding_dim % 2 == 1:
-        # zero pad
         emb = torch.cat([emb, torch.zeros(num_embeddings, 1)], dim=1)
     if padding_idx is not None:
         emb[padding_idx, :] = 0
@@ -61,20 +61,15 @@ class Four_Pos_Fusion_Embedding(nn.Module):
                                                 nn.ReLU(),
                                                 nn.Linear(self.hidden_size*4,4),
                                                 nn.Softmax(dim=-1))
-
-            # print('暂时不支持以attn融合pos信息')
         elif self.four_pos_fusion == 'gate':
             self.w_r = nn.Linear(self.hidden_size,self.hidden_size)
             self.pos_gate_score = nn.Sequential(nn.Linear(self.hidden_size*4,self.hidden_size*2),
                                                 nn.ReLU(),
                                                 nn.Linear(self.hidden_size*2,4*self.hidden_size))
-
-            # print('暂时不支持以gate融合pos信息')
-            # exit(1208)
     def forward(self,pos_s,pos_e):
         batch = pos_s.size(0)
         # 这里的seq_len已经是之前的seq_len+lex_num了
-        # 互相之间的相对位置
+        # 互相之间的相对位置，得到相对位置矩阵
         pos_ss = pos_s.unsqueeze(-1)-pos_s.unsqueeze(-2)
         pos_se = pos_s.unsqueeze(-1)-pos_e.unsqueeze(-2)
         pos_es = pos_e.unsqueeze(-1)-pos_s.unsqueeze(-2)
@@ -99,6 +94,7 @@ class Four_Pos_Fusion_Embedding(nn.Module):
         view(-1)拉平成1维的
         + self.max_seq_len 是因为pos_ss中有正有负，算上[CLS]和[SEP]，
         取值范围是[-max_seq_len~max_seq_len]内的整数
+        pe_ss是每个字符上的相对位置编码，不再是self.pe_ss的所有可能情况的初始化
         '''
         pe_ss = self.pe_ss[(pos_ss).view(-1) + self.max_seq_len].view(size=[batch, max_seq_len, max_seq_len, -1])
         pe_se = self.pe_se[(pos_se).view(-1) + self.max_seq_len].view(size=[batch, max_seq_len, max_seq_len, -1])
@@ -182,19 +178,6 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
         self.v_proj=v_proj
         self.r_proj=r_proj
 
-        if self.four_pos_fusion == 'ff':
-            self.pos_fusion_forward = nn.Sequential(nn.Linear(self.hidden_size*4,self.hidden_size),
-                                                    nn.ReLU(inplace=True))
-        elif self.four_pos_fusion == 'attn':
-            self.pos_attn_score = nn.Sequential(nn.Linear(self.hidden_size*4,self.hidden_size*4),
-                                                nn.ReLU(),
-                                                nn.Linear(self.hidden_size*4,4),
-                                                nn.Softmax(dim=-1))
-        elif self.four_pos_fusion == 'gate':
-            self.pos_gate_score = nn.Sequential(nn.Linear(self.hidden_size*4,self.hidden_size*2),
-                                                nn.ReLU(),
-                                                nn.Linear(self.hidden_size*2,4*self.hidden_size))
-
         self.w_k = nn.Linear(self.hidden_size, self.hidden_size)
         self.w_q = nn.Linear(self.hidden_size, self.hidden_size)
         self.w_v = nn.Linear(self.hidden_size, self.hidden_size)
@@ -204,9 +187,7 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
         self.v = nn.Parameter(torch.Tensor(self.num_heads,self.per_head_size))
 
         self.pe = pe
-
         self.dropout = MyDropout(attn_dropout)
-
         if ff_final:
             self.ff_final = nn.Linear(self.hidden_size,self.hidden_size)
 
@@ -224,7 +205,7 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
         if self.r_proj:
             rel_pos_embedding = self.w_r(rel_pos_embedding)
         # print('228 modules', query.shape)
-        # print('229 modules', rel_pos_embedding.shape)
+        # print('modules 229 rel_pos_embedding', rel_pos_embedding.shape)
 
         batch = key.size(0)
         max_seq_len = key.size(1)
@@ -238,6 +219,7 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
             rel_pos_embedding,
             [batch, max_seq_len, max_seq_len, self.num_heads, self.per_head_size])
 
+        '''根据论文公式计算相对位置编码的注意力结果'''
         # batch * n_head * seq_len * d_head
         # print('244 modules', key.shape)
         key = key.transpose(1, 2)
@@ -274,7 +256,7 @@ class MultiHead_Attention_Lattice_rel_save_gpumm(nn.Module):
             print('query_and_u_for_c size:{}'.format(query_and_u_for_c.size()))
 
         #B
-        # print('279 modules', rel_pos_embedding.shape)
+        # 以每个token为原点，到其他token的相对位置编码
         rel_pos_embedding_for_b = rel_pos_embedding.permute(0, 3, 1, 4, 2)
         # print('281 modules', rel_pos_embedding_for_b.shape)
         # after above, rel_pos_embedding: batch * num_head * query_len * per_head_size * key_len
@@ -417,13 +399,9 @@ class MultiHead_Attention_Lattice_rel(nn.Module):
         self.v = nn.Parameter(torch.Tensor(self.num_heads,self.per_head_size))
 
         self.pe = pe
-
         self.dropout = MyDropout(attn_dropout)
-
         if ff_final:
             self.ff_final = nn.Linear(self.hidden_size,self.hidden_size)
-
-
 
     def forward(self,key, query, value, seq_len, lex_num, pos_s,pos_e):
         batch = key.size(0)
@@ -866,7 +844,6 @@ class Positionwise_FeedForward(nn.Module):
                 output = self.dropout(output)
             if i == 1:
                 output = self.dropout_2(output)
-
         return output
 
 class Absolute_Position_Embedding(nn.Module):
@@ -1069,7 +1046,7 @@ class Transformer_Encoder_Layer(nn.Module):
                                             k_proj=self.k_proj,q_proj=self.q_proj,v_proj=self.v_proj,
                                             attn_dropout=self.dropout['attn'],
                                             ff_final=self.attn_ff)
-        self.ff = Positionwise_FeedForward([hidden_size, ff_size, hidden_size], self.dropout,ff_activate=self.ff_activate)
+        self.ff = Positionwise_FeedForward([hidden_size, ff_size, hidden_size], self.dropout, ff_activate=self.ff_activate)
 
     def forward(self, inp, seq_len, lex_num=0,pos_s=None,pos_e=None,rel_pos_embedding=None):
         output = inp
@@ -1123,6 +1100,7 @@ class Transformer_Encoder(nn.Module):
         self.mode = mode
         self.max_seq_len = max_seq_len
         self.hidden_size = hidden_size
+        # 如果不共享，则每一层都有自己的相对位置编码
         if self.four_pos_fusion_shared:
             self.four_pos_fusion_embedding = \
                 Four_Pos_Fusion_Embedding(self.pe,self.four_pos_fusion,self.pe_ss,self.pe_se,self.pe_es,self.pe_ee,

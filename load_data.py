@@ -330,21 +330,21 @@ def load_msra_ner_1(path,char_embedding_path=None,bigram_embedding_path=None,ind
                               char_min_freq=1,bigram_min_freq=1,only_train_min_freq=0):
     from fastNLP.io.loader import ConllLoader
     from utils import get_bigrams
-    if train_clip:
-        train_path = os.path.join(path, 'train_dev.char.bmes_clip1')
-        test_path = os.path.join(path, 'test.char.bmes_clip1')
-    else:
-        train_path = os.path.join(path,'train_dev.char.bmes')
-        test_path = os.path.join(path,'test.char.bmes')
+    train_path = os.path.join(path, 'train.train')
+    dev_path = os.path.join(path, 'dev.dev')
+    test_path = os.path.join(path, 'test.test')
 
     loader = ConllLoader(['chars','target'])
     train_bundle = loader.load(train_path)
+    dev_bundle = loader.load(dev_path)
     test_bundle = loader.load(test_path)
 
 
     datasets = dict()
     datasets['train'] = train_bundle.datasets['train']
     datasets['test'] = test_bundle.datasets['train']
+    for ins in dev_bundle.datasets['train']:
+        datasets['train'].append(ins)
 
 
     datasets['train'].apply_field(get_bigrams,field_name='chars',new_field_name='bigrams')

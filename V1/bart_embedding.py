@@ -3,10 +3,8 @@ import torch
 import numpy as np
 from torch import nn
 from itertools import chain
-from fastNLP import seq_len_to_mask
 from fastNLP import Vocabulary
 from fastNLP.modules import Seq2SeqEncoder, BertTokenizer
-from fastNLP.models import Seq2SeqModel
 from .modeling_bart import BartEncoder, BartModel
 
 class _BartWordModel(nn.Module):
@@ -34,11 +32,11 @@ class _BartWordModel(nn.Module):
         model = BartModel.from_pretrained(model_dir_or_name)
         self.encoder = model.encoder
         self._max_position_embeddings = model.config.max_position_embeddings
-        #  检查encoder_layer_number是否合理
+        # 检查encoder_layer_number是否合理
         # print(dir(model))
         # print(dir(model.encoder))
         # print(dir(model.decoder))
-        print('41 bart_emb', model.config.d_model)
+        # print('41 bart_emb', model.config.d_model)
         self.encoder.hidden_size = model.config.d_model
         encoder_layer_number = len(model.encoder.layers)
         for layer in self.layers:
@@ -214,16 +212,16 @@ class _BartWordModel(nn.Module):
         self.tokenzier.save_pretrained(folder)
         self.encoder.save_pretrained(folder)
 
-class FBartEncoder(Seq2SeqEncoder):
-    def __init__(self, encoder):
-        super().__init__()
-        assert isinstance(encoder, BartEncoder)
-        self.bart_encoder = encoder
+# class FBartEncoder(Seq2SeqEncoder):
+#     def __init__(self, encoder):
+#         super().__init__()
+#         assert isinstance(encoder, BartEncoder)
+#         self.bart_encoder = encoder
 
-    def forward(self, src_tokens, mask):
-        # 第i行前 src_seq_len[i] 的mask是True，后面的是False，长度是max(src_seq_len)或max_len
-        dict = self.bart_encoder(input_ids=src_tokens, attention_mask=mask, return_dict=True,
-                                 output_hidden_states=True)
-        encoder_outputs = dict.last_hidden_state
-        hidden_states = dict.hidden_states
-        return encoder_outputs, hidden_states
+#     def forward(self, src_tokens, mask):
+#         # 第i行前 src_seq_len[i] 的mask是True，后面的是False，长度是max(src_seq_len)或max_len
+#         dict = self.bart_encoder(input_ids=src_tokens, attention_mask=mask, return_dict=True,
+#                                  output_hidden_states=True)
+#         encoder_outputs = dict.last_hidden_state
+#         hidden_states = dict.hidden_states
+#         return encoder_outputs, hidden_states

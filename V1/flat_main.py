@@ -39,7 +39,6 @@ import traceback
 import warnings
 import sys
 from utils import print_info
-# from fastNLP.embeddings import BertEmbedding
 from fastNLP_module import BertEmbedding
 from V1.models import BERT_SeqLabel
 
@@ -134,7 +133,6 @@ parser.add_argument('--four_pos_fusion',default='ff_two',choices=['ff','attn','g
                     help='ff就是输入带非线性隐层的全连接，'
                          'attn就是先计算出对每个位置编码的加权，然后求加权和'
                          'gate和attn类似，只不过就是计算的加权多了一个维度')
-
 parser.add_argument('--four_pos_fusion_shared',default=True,help='是不是要共享4个位置融合之后形成的pos')
 
 # parser.add_argument('--rel_pos_scale',default=2,help='在lattice且用相对位置编码时，由于中间过程消耗显存过大，'
@@ -247,9 +245,8 @@ elif args.dataset == 'msra':
     vocabs: {'char':Vovabulary, 'label':Vovabulary, 'bigram':Vovabulary}, idx2word, word2idx
     embeddings: chat和bigram的预训练向量，embedding.embedding.state_dict()['weight']
     '''
-    datasets,vocabs,embeddings = load_msra_ner_without_dev(msra_ner_cn_path,yangjie_rich_pretrain_unigram_path,
-                                                           yangjie_rich_pretrain_bigram_path,
-                                                           _refresh=refresh_data,index_token=False,train_clip=args.train_clip,
+    datasets,vocabs,embeddings = load_msra_ner_1(msra_ner_cn_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
+                                                           _refresh=refresh_data,index_token=False,
                                                            _cache_fp=raw_dataset_cache_name,
                                                            char_min_freq=args.char_min_freq,
                                                            bigram_min_freq=args.bigram_min_freq,
@@ -463,7 +460,7 @@ if args.model == 'transformer':
         model = Transformer_SeqLabel(embeddings['lattice'], embeddings['bigram'], args.hidden, len(vocabs['label']),
                                      args.head, args.layer, args.use_abs_pos,args.use_rel_pos,
                                      args.learn_pos, args.add_pos,
-                                     args.pre, args.post, args.ff, args.scaled,dropout,args.use_bigram,
+                                     args.pre, args.post, args.ff, args.scaled, dropout, args.use_bigram,
                                      mode,device,vocabs,
                                      max_seq_len=max_seq_len,
                                      rel_pos_shared=args.rel_pos_shared,
