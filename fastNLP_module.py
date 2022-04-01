@@ -15,7 +15,6 @@ from fastNLP.embeddings.embedding import TokenEmbedding
 from fastNLP.embeddings.contextual_embedding import ContextualEmbedding
 from fastNLP.embeddings.bert_embedding import _BertWordModel
 # from fastNLP.modules import BertModel
-
 from utils import MyDropout
 from V1.bart_embedding import _BartWordModel
 
@@ -426,3 +425,5 @@ class BertEmbedding(ContextualEmbedding):
                 if self._word_sep_index:
                     words.masked_fill_(sep_mask, self._word_sep_index)
         return words
+
+

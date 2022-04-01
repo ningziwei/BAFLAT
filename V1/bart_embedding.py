@@ -4,8 +4,8 @@ import numpy as np
 from torch import nn
 from itertools import chain
 from fastNLP import Vocabulary
-from fastNLP.modules import Seq2SeqEncoder, BertTokenizer
-from .modeling_bart import BartEncoder, BartModel
+from fastNLP.modules import BertTokenizer
+from .modeling_bart import BartModel
 
 class _BartWordModel(nn.Module):
     def __init__(self, model_dir_or_name: str, vocab: Vocabulary, layers: str = '-1', pool_method: str = 'first',
@@ -81,6 +81,7 @@ class _BartWordModel(nn.Module):
         :param words: torch.LongTensor, batch_size x max_len
         :return: num_layers x batch_size x max_len x hidden_size或者num_layers x batch_size x (max_len+2) x hidden_size
         """
+        print('bart 84', words)
         with torch.no_grad():
             batch_size, max_word_len = words.size()
             word_mask = words.ne(self._word_pad_index)  # 为1的地方有word
@@ -106,8 +107,9 @@ class _BartWordModel(nn.Module):
             # 1. 获取words的word_pieces的id，以及对应的span范围
             word_indexes = words.cpu().numpy()
             for i in range(batch_size):
+                print('bart 109', word_indexes[i, :seq_len[i]])
                 word_pieces_i = list(chain(*self.word_to_wordpieces[word_indexes[i, :seq_len[i]]]))
-                # print('467', word_pieces_i)
+                print('bart 111', word_pieces_i)
                 if self.auto_truncate and len(word_pieces_i) > self._max_position_embeddings - 2:
                     word_pieces_i = word_pieces_i[:self._max_position_embeddings - 2]
                 word_pieces[i, 1:word_pieces_lengths[i] + 1] = torch.LongTensor(word_pieces_i)
@@ -205,7 +207,6 @@ class _BartWordModel(nn.Module):
     def save(self, folder):
         """
         给定一个folder保存pytorch_model.bin, config.json, vocab.txt
-
         :param str folder:
         :return:
         """
@@ -225,3 +226,10 @@ class _BartWordModel(nn.Module):
 #         encoder_outputs = dict.last_hidden_state
 #         hidden_states = dict.hidden_states
 #         return encoder_outputs, hidden_states
+
+        # mask = seq_len_to_mask(src_seq_len, max_len=src_tokens.size(1))
+        # dict = self.bart_encoder(input_ids=src_tokens, attention_mask=mask, return_dict=True,
+        #                          output_hidden_states=True)
+        # encoder_outputs = dict.last_hidden_state
+        # hidden_states = dict.hidden_states
+        # return encoder_outputs, mask, hidden_states

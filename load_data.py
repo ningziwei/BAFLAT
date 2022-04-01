@@ -455,7 +455,6 @@ def load_weibo_ner(path,unigram_embedding_path=None,bigram_embedding_path=None,i
         bigram_vocab.index_dataset(*list(datasets.values()),field_name='bigrams',new_field_name='bigrams')
         label_vocab.index_dataset(*list(datasets.values()), field_name='target', new_field_name='target')
 
-    
     vocabs['bigram'] = bigram_vocab
 
     embeddings = {}
