@@ -1,5 +1,31 @@
 import os
+import sys
+sys.path.append('../')
+import argparse
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import collections
 import fitlog
+
+from torch.optim.lr_scheduler import LambdaLR
+from fastNLP import logger
+from fastNLP import LRScheduler
+from fastNLP import LossInForward
+from fastNLP import FitlogCallback
+from fastNLP.core import Trainer
+from fastNLP.core import Callback
+from fastNLP.core.metrics import SpanFPreRecMetric,AccuracyMetric
+from fastNLP.core.callback import WarmupCallback,GradientClipCallback,EarlyStopCallback
+
+from paths import *
+from load_data import *
+from utils import get_peking_time, print_info
+from fastNLP_module import BertEmbedding
+from V1.add_lattice import equip_chinese_ner_with_lexicon
+from V1.models import BERT_SeqLabel
+from V1.models import Lattice_Transformer_SeqLabel, Transformer_SeqLabel
+
 use_fitlog = True
 if not use_fitlog:
     fitlog.debug()
@@ -7,48 +33,6 @@ fitlog.set_log_dir('logs')
 load_dataset_seed = 100
 fitlog.add_hyper(load_dataset_seed,'load_dataset_seed')
 fitlog.set_rng_seed(load_dataset_seed)
-import sys
-sys.path.append('../')
-from load_data import *
-import argparse
-from paths import *
-from fastNLP.core import Trainer
-# from trainer import Trainer
-from fastNLP.core import Callback
-from V1.models import Lattice_Transformer_SeqLabel, Transformer_SeqLabel
-import torch
-import collections
-import torch.optim as optim
-import torch.nn as nn
-from fastNLP import LossInForward
-from fastNLP.core.metrics import SpanFPreRecMetric,AccuracyMetric
-from fastNLP.core.callback import WarmupCallback,GradientClipCallback,EarlyStopCallback
-from fastNLP import FitlogCallback
-# from fitlogcallback import FitlogCallback
-# from my_fitlog_callback import FitlogCallback
-from fastNLP import LRScheduler
-from torch.optim.lr_scheduler import LambdaLR
-# from models import LSTM_SeqLabel,LSTM_SeqLabel_True
-import fitlog
-from fastNLP import logger
-from utils import get_peking_time
-from V1.add_lattice import equip_chinese_ner_with_lexicon
-from load_data import load_toy_ner
-
-import traceback
-import warnings
-import sys
-from utils import print_info
-from fastNLP_module import BertEmbedding
-from V1.models import BERT_SeqLabel
-
-
-# def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-#
-#     log = file if hasattr(file,'write') else sys.stderr
-#     traceback.print_stack(file=log)
-#     log.write(warnings.formatwarning(message, category, filename, lineno, line))
-# warnings.showwarning = warn_with_traceback
 
 parser = argparse.ArgumentParser()
 # performance inrelevant
@@ -78,7 +62,6 @@ parser.add_argument('--bigram_min_freq',default=1,type=int)
 parser.add_argument('--lattice_min_freq',default=1,type=int)
 parser.add_argument('--only_train_min_freq',default=True)
 parser.add_argument('--only_lexicon_in_train',default=False)
-
 
 parser.add_argument('--word_min_freq',default=1,type=int)
 
@@ -181,9 +164,6 @@ logger.add_file('log/{}'.format(now_time),level='info')
 if args.test_batch == -1:
     args.test_batch = args.batch//2
 fitlog.add_hyper(now_time,'time')
-if args.debug:
-    # args.dataset = 'toy'
-    pass
 
 if args.device!='cpu':
     assert args.device.isdigit()
@@ -202,7 +182,6 @@ raw_dataset_cache_name = os.path.join('cache',args.dataset+
                                       +'only_train_min_freq{}'.format(args.only_train_min_freq)
                                       +'number_norm{}'.format(args.number_normalized)
                                       + 'load_dataset_seed{}'.format(load_dataset_seed))
-
 
 if args.dataset == 'ontonotes':
     datasets,vocabs,embeddings = load_ontonotes4ner(ontonote4ner_cn_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
@@ -253,6 +232,8 @@ elif args.dataset == 'msra':
                                                            only_train_min_freq=args.only_train_min_freq
                                                            )
 
+print('flat_main 256', datasets['train'])
+
 if args.gaz_dropout < 0:
     args.gaz_dropout = args.embed_dropout
 
@@ -278,9 +259,9 @@ cache_name = os.path.join('cache',(args.dataset+'_lattice'+'_only_train:{}'+
                                    +'char_min_freq{}'+'bigram_min_freq{}'+'word_min_freq{}'+'only_train_min_freq{}'
                                    +'number_norm{}'+'lexicon_{}'+'load_dataset_seed_{}')
                           .format(args.only_lexicon_in_train,
-                          args.train_clip,args.number_normalized,args.char_min_freq,
-                                  args.bigram_min_freq,args.word_min_freq,args.only_train_min_freq,
-                                  args.number_normalized,args.lexicon_name,load_dataset_seed))
+                                args.train_clip,args.number_normalized,args.char_min_freq,
+                                args.bigram_min_freq,args.word_min_freq,args.only_train_min_freq,
+                                args.number_normalized,args.lexicon_name,load_dataset_seed))
 
 # for k in datasets['train'][0].items(): print(k)
 # 对实体抽取数据进行数据增强
@@ -294,14 +275,16 @@ cache_name = os.path.join('cache',(args.dataset+'_lattice'+'_only_train:{}'+
     }
     embeddings {'char':,'bigram':,'word':,'lattice': StaticEmbedding}
 '''
-datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(datasets,vocabs,embeddings,
-                                                            w_list,yangjie_rich_pretrain_word_path,
-                                                         _refresh=refresh_data,_cache_fp=cache_name,
-                                                         only_lexicon_in_train=args.only_lexicon_in_train,
-                                                            word_char_mix_embedding_path=yangjie_rich_pretrain_char_and_word_path,
-                                                            number_normalized=args.number_normalized,
-                                                            lattice_min_freq=args.lattice_min_freq,
-                                                            only_train_min_freq=args.only_train_min_freq)
+datasets,vocabs,embeddings = equip_chinese_ner_with_lexicon(
+        datasets,vocabs,embeddings,
+        w_list,yangjie_rich_pretrain_word_path,
+        _refresh=refresh_data,_cache_fp=cache_name,
+        only_lexicon_in_train=args.only_lexicon_in_train,
+        word_char_mix_embedding_path=yangjie_rich_pretrain_char_and_word_path,
+        number_normalized=args.number_normalized,
+        lattice_min_freq=args.lattice_min_freq,
+        only_train_min_freq=args.only_train_min_freq
+    )
 
 # print('299 train:{}'.format(len(datasets['train'])))
 avg_seq_len = 0
