@@ -417,28 +417,24 @@ if args.model == 'transformer':
         if args.only_bert:
             model = BERT_SeqLabel(bert_embedding,len(vocabs['label']),vocabs,args.after_bert)
         else:
-            model = Lattice_Transformer_SeqLabel(embeddings['lattice'], embeddings['bigram'], args.hidden, len(vocabs['label']),
-                                         args.head, args.layer, args.use_abs_pos, args.use_rel_pos,
-                                         args.learn_pos, args.add_pos,
-                                         args.pre, args.post, args.ff, args.scaled, dropout, args.use_bigram,
-                                         mode,device,vocabs,
-                                         max_seq_len=max_seq_len,
-                                         rel_pos_shared=args.rel_pos_shared,
-                                         k_proj=args.k_proj,
-                                         q_proj=args.q_proj,
-                                         v_proj=args.v_proj,
-                                         r_proj=args.r_proj,
-                                         self_supervised=args.self_supervised,
-                                         attn_ff=args.attn_ff,
-                                         pos_norm=args.pos_norm,
-                                         ff_activate=args.ff_activate,
-                                         abs_pos_fusion_func=args.abs_pos_fusion_func,
-                                         embed_dropout_pos=args.embed_dropout_pos,
-                                         four_pos_shared=args.four_pos_shared,
-                                         four_pos_fusion=args.four_pos_fusion,
-                                         four_pos_fusion_shared=args.four_pos_fusion_shared,
-                                         bert_embedding=bert_embedding
-                                         )
+            model = Lattice_Transformer_SeqLabel(
+                embeddings['lattice'], embeddings['bigram'], 
+                args.hidden, len(vocabs['label']), args.head, args.layer, 
+                args.use_abs_pos, args.use_rel_pos, args.learn_pos, args.add_pos,
+                args.pre, args.post, args.ff, args.scaled, dropout, 
+                args.use_bigram, mode, device, vocabs, 
+                max_seq_len=max_seq_len, rel_pos_shared=args.rel_pos_shared,
+                k_proj=args.k_proj, q_proj=args.q_proj,
+                v_proj=args.v_proj, r_proj=args.r_proj,
+                self_supervised=args.self_supervised, attn_ff=args.attn_ff,
+                pos_norm=args.pos_norm, ff_activate=args.ff_activate,
+                abs_pos_fusion_func=args.abs_pos_fusion_func,
+                embed_dropout_pos=args.embed_dropout_pos,
+                four_pos_shared=args.four_pos_shared,
+                four_pos_fusion=args.four_pos_fusion,
+                four_pos_fusion_shared=args.four_pos_fusion_shared,
+                bert_embedding=bert_embedding
+            )
     else:
         model = Transformer_SeqLabel(embeddings['lattice'], embeddings['bigram'], args.hidden, len(vocabs['label']),
                                      args.head, args.layer, args.use_abs_pos,args.use_rel_pos,
