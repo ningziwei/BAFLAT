@@ -387,6 +387,7 @@ class Lattice_Transformer_SeqLabel(nn.Module):
         # print('raw_embed_char_1:{}'.format(raw_embed_char[:1,:3,-5:]))
 
         if self.use_bert:
+            # print('models 390', lattice.shape)
             bert_pad_length = max_seq_len_and_lex_num-max_seq_len
             char_for_bert = lattice[:, :max_seq_len]
             mask = seq_len_to_mask(seq_len).bool()

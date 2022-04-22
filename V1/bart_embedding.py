@@ -28,7 +28,7 @@ class _BartWordModel(nn.Module):
             else:
                 pos_num_output_layer = max(layer, pos_num_output_layer)
 
-        self.tokenzier = BertTokenizer.from_pretrained(model_dir_or_name)
+        self.tokenizer = BertTokenizer.from_pretrained(model_dir_or_name)
         model = BartModel.from_pretrained(model_dir_or_name)
         self.encoder = model.encoder
         self._max_position_embeddings = model.config.max_position_embeddings
@@ -65,14 +65,14 @@ class _BartWordModel(nn.Module):
                 word = '[UNK]'
             elif vocab.word_count[word]<min_freq:
                 word = '[UNK]'
-            word_pieces = self.tokenzier.wordpiece_tokenizer.tokenize(word)
-            word_pieces = self.tokenzier.convert_tokens_to_ids(word_pieces)
+            word_pieces = self.tokenizer.wordpiece_tokenizer.tokenize(word)
+            word_pieces = self.tokenizer.convert_tokens_to_ids(word_pieces)
             word_to_wordpieces.append(word_pieces)
             word_pieces_lengths.append(len(word_pieces))
-        self._cls_index = self.tokenzier.vocab['[CLS]']
-        self._sep_index = self.tokenzier.vocab['[SEP]']
+        self._cls_index = self.tokenizer.vocab['[CLS]']
+        self._sep_index = self.tokenizer.vocab['[SEP]']
         self._word_pad_index = vocab.padding_idx
-        self._wordpiece_pad_index = self.tokenzier.vocab['[PAD]']  # 需要用于生成word_piece
+        self._wordpiece_pad_index = self.tokenizer.vocab['[PAD]']  # 需要用于生成word_piece
         self.word_to_wordpieces = np.array(word_to_wordpieces)
         self.register_buffer('word_pieces_lengths', torch.LongTensor(word_pieces_lengths))
 
@@ -81,7 +81,7 @@ class _BartWordModel(nn.Module):
         :param words: torch.LongTensor, batch_size x max_len
         :return: num_layers x batch_size x max_len x hidden_size或者num_layers x batch_size x (max_len+2) x hidden_size
         """
-        print('bart 84', words)
+        # print('bart 84', words.shape)
         with torch.no_grad():
             batch_size, max_word_len = words.size()
             word_mask = words.ne(self._word_pad_index)  # 为1的地方有word
@@ -107,9 +107,9 @@ class _BartWordModel(nn.Module):
             # 1. 获取words的word_pieces的id，以及对应的span范围
             word_indexes = words.cpu().numpy()
             for i in range(batch_size):
-                print('bart 109', word_indexes[i, :seq_len[i]])
+                # print('bart 109', word_indexes[i, :seq_len[i]])
                 word_pieces_i = list(chain(*self.word_to_wordpieces[word_indexes[i, :seq_len[i]]]))
-                print('bart 111', word_pieces_i)
+                # print('bart 111', word_pieces_i)
                 if self.auto_truncate and len(word_pieces_i) > self._max_position_embeddings - 2:
                     word_pieces_i = word_pieces_i[:self._max_position_embeddings - 2]
                 word_pieces[i, 1:word_pieces_lengths[i] + 1] = torch.LongTensor(word_pieces_i)
@@ -202,6 +202,7 @@ class _BartWordModel(nn.Module):
                     outputs[l_index, :, 0] = output_layer[:, 0]
                 outputs[l_index, batch_indexes, seq_len + s_shift] = output_layer[batch_indexes, word_pieces_lengths + s_shift]
         # 3. 最终的embedding结果
+        # print('bart 205', outputs.shape)
         return outputs
 
     def save(self, folder):
@@ -210,7 +211,7 @@ class _BartWordModel(nn.Module):
         :param str folder:
         :return:
         """
-        self.tokenzier.save_pretrained(folder)
+        self.tokenizer.save_pretrained(folder)
         self.encoder.save_pretrained(folder)
 
 # class FBartEncoder(Seq2SeqEncoder):
