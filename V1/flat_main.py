@@ -8,6 +8,7 @@ import torch.optim as optim
 import collections
 import fitlog
 
+# from callbacks import FitlogCallback
 from torch.optim.lr_scheduler import LambdaLR
 from fastNLP import logger
 from fastNLP import LRScheduler
@@ -141,8 +142,10 @@ parser.add_argument('--abs_pos_fusion_func',default='nonlinear_add',
                     choices=['add','concat','nonlinear_concat','nonlinear_add','concat_nonlinear','add_nonlinear'])
 
 parser.add_argument('--dataset', default='ontonotes', help='weibo|resume|ontonotes|msra')
-parser.add_argument('--continue_train', default=0)
+parser.add_argument('--continue_train', default=0, type=int)
 # parser.add_argument('--debug',default=1)
+
+parser.add_argument('--saved_name',default='',type=str)
 
 args = parser.parse_args()
 if args.ff_dropout_2 < 0:
@@ -199,17 +202,22 @@ if 'ontonotes' in args.dataset:
         only_train_min_freq=args.only_train_min_freq
         )
 elif args.dataset == 'resume':
-    datasets,vocabs,embeddings = load_resume_ner(resume_ner_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
-                                                    _refresh=refresh_data,index_token=False,
-                                                 _cache_fp=raw_dataset_cache_name,
-                                                 char_min_freq=args.char_min_freq,
-                                                 bigram_min_freq=args.bigram_min_freq,
-                                                 only_train_min_freq=args.only_train_min_freq
-                                                    )
+    datasets,vocabs,embeddings = load_resume_ner(
+        resume_ner_path,
+        yangjie_rich_pretrain_unigram_path,
+        yangjie_rich_pretrain_bigram_path,
+        _refresh=refresh_data,index_token=False,
+        _cache_fp=raw_dataset_cache_name,
+        char_min_freq=args.char_min_freq,
+        bigram_min_freq=args.bigram_min_freq,
+        only_train_min_freq=args.only_train_min_freq
+    )
 elif args.dataset == 'weibo':
     args.epoch = 500
     datasets,vocabs,embeddings = load_weibo_ner(
-        weibo_ner_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
+        weibo_ner_path,
+        yangjie_rich_pretrain_unigram_path,
+        yangjie_rich_pretrain_bigram_path,
         _refresh=refresh_data,index_token=False,
         _cache_fp=raw_dataset_cache_name,
         char_min_freq=args.char_min_freq,
@@ -217,15 +225,21 @@ elif args.dataset == 'weibo':
         only_train_min_freq=args.only_train_min_freq
     )
 elif args.dataset == 'weibo_old':
-    datasets,vocabs,embeddings = load_weibo_ner_old(weibo_ner_old_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
-                                                    _refresh=refresh_data,index_token=False,
-                                                    _cache_fp=raw_dataset_cache_name
-                                                    )
+    datasets,vocabs,embeddings = load_weibo_ner_old(
+        weibo_ner_old_path,
+        yangjie_rich_pretrain_unigram_path,
+        yangjie_rich_pretrain_bigram_path,
+        _refresh=refresh_data,index_token=False,
+        _cache_fp=raw_dataset_cache_name
+    )
 elif args.dataset == 'toy':
-    datasets,vocabs,embeddings = load_toy_ner(toy_ner_path,yangjie_rich_pretrain_unigram_path,yangjie_rich_pretrain_bigram_path,
-                                                    _refresh=refresh_data,index_token=False,train_clip=args.train_clip,
-                                                    _cache_fp=raw_dataset_cache_name
-                                                    )
+    datasets,vocabs,embeddings = load_toy_ner(
+        toy_ner_path,
+        yangjie_rich_pretrain_unigram_path,
+        yangjie_rich_pretrain_bigram_path,
+        _refresh=refresh_data,index_token=False,train_clip=args.train_clip,
+        _cache_fp=raw_dataset_cache_name
+    )
 elif args.dataset == 'msra':
     '''
     datasets: chars ['科','技','全'...], target ['O','O'...], bigrams ['科技','技全'...], seq_lens 26
@@ -429,8 +443,9 @@ torch.backends.cudnn.benchmark = False
 fitlog.add_hyper(args)
 
 if args.continue_train:
-    model_path = f'/data1/nzw/model_saved/FLAT/weibo/best_Lattice_Transformer_SeqLabel'
+    model_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}/best_Lattice_Transformer_SeqLabel'
     model = torch.load(model_path)
+    bert_embedding = model.bert_embedding
 else:
     if args.model == 'transformer':
         if args.lattice:
@@ -646,7 +661,7 @@ if args.status == 'train':
                       n_epochs=args.epoch,
                       dev_data=datasets['dev'],
                       metrics=metrics,
-                      save_path=save_path,
+                    #   save_path=save_path,
                       device=device,callbacks=callbacks,dev_batch_size=args.test_batch,
                       test_use_tqdm=False,check_code_level=-1,
                       update_every=args.update_every)
@@ -712,6 +727,7 @@ def label_sequence_to_entities(label_sequence, texts, scheme="BIO"):
             else:
                 i += 1
     return entityMentions
+
 def write_predict_result(f, chars, pred, target=''):
     if target:
         for c, p, t in zip(chars, pred, target):
@@ -722,7 +738,7 @@ def write_predict_result(f, chars, pred, target=''):
     f.write('\n')
 
 if args.status == 'test':
-    model_path = '/data1/nzw/model_saved/FLAT/weibo/best_Lattice_Transformer_SeqLabel_f_2022-02-21-14-13-30'
+    model_path = f'/data1/nzw/model_saved/FLAT/{args.dataset}/{args.saved_name}'
     states = torch.load(model_path).state_dict()
     model.load_state_dict(states)
     predictor = Predictor(model)   # 这里的model是加载权重之后的model
@@ -739,13 +755,13 @@ if args.status == 'test':
     # print(test_raw_char[0])
     # for ch in test_raw_char: print(ch)
     idx2word = vocabs['label'].idx2word
-    out_path = '/home/ningziwei/Research/FLAT/weibo.txt'
+    out_path = f'/home/ningziwei/Research/FLAT/{args.dataset}.txt'
     f = open(out_path, 'w', encoding='utf8')
     for pred, target, raw_char in zip(test_label_list, test_target, test_raw_char):
         pred = pred[0]
         pred = [idx2word[e] for e in pred]
         target = [idx2word[e] for e in target]
-        write_predict_result(f, raw_char, pred, target)
+        write_predict_result(f, raw_char, target, pred)
     f.close()
 
 
