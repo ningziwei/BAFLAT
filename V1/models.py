@@ -621,6 +621,7 @@ class Transformer_SeqLabel(nn.Module):
             print('self.output_self_supervised:{}'.format(self.output_self_supervised.weight.size()))
         self.crf = get_crf_zero_init(self.label_size)
         self.loss_func = nn.CrossEntropyLoss(ignore_index=-100)
+
     def forward(self, chars, bigrams, seq_len, target, chars_target=None):
         # print('**self.training: {} **'.format(self.training))
         batch_size = chars.size(0)
